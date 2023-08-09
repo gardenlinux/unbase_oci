@@ -1,0 +1,48 @@
+name: build
+on:
+  push:
+    branches:
+      main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: nkraetzschmar/workflow-telemetry-action@v1
+        with:
+          metric_frequency: 1
+          comment_on_pr: false
+      - uses: actions/checkout@v3
+      - name: install required packages for cross build
+        run: sudo apt-get update && sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-user-static
+      - name: build amd64
+        run: ./build --arch amd64
+      - name: test amd64 for amd64 target
+        run: ./test --container-image unbase_oci:amd64 --arch amd64
+      - name: test amd64 for arm64 target
+        run: ./test --container-image unbase_oci:amd64 --arch arm64
+      - name: build arm64
+        run: ./build --arch arm64
+      - name: test arm64 for amd64 target
+        run: ./test --container-image unbase_oci:arm64 --arch amd64
+      - name: test arm64 for arm64 target
+        run: ./test --container-image unbase_oci:arm64 --arch arm64
+      - name: upload to github container registry
+        run: |
+          podman tag unbase_oci:amd64 ghcr.io/${{ github.repository }}:amd64-${{ github.sha }}
+          podman tag unbase_oci:arm64 ghcr.io/${{ github.repository }}:arm64-${{ github.sha }}
+          podman login -u token -p ${{ github.token }} ghcr.io
+          podman push ghcr.io/${{ github.repository }}:amd64-${{ github.sha }}
+          podman push ghcr.io/${{ github.repository }}:arm64-${{ github.sha }}
+          podman manifest create ghcr.io/${{ github.repository }}:${{ github.sha }}
+          podman manifest add ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:amd64-${{ github.sha }}
+          podman manifest add ghcr.io/${{ github.repository }}:${{ github.sha }} ghcr.io/${{ github.repository }}:arm64-${{ github.sha }}
+          podman push ghcr.io/${{ github.repository }}:${{ github.sha }}
+      - name : tag latest
+        run: |
+          git tag --force latest
+          git push --force origin latest
+      - name: publish release
+        run: |
+          sed -i 's|container_image=localhost/unbase_oci|container_image=ghcr.io/${{ github.repository }}:${{ github.sha }}|' unbase_oci
+          release="$(.github/workflows/release.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }} create latest unbase_oci 'created by GitHub actions run [${{ github.run_id }}](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})')"
+          .github/workflows/release.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.repository }} upload "$release" unbase_oci

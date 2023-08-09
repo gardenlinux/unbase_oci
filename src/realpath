@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+realpath() (
+	file="$1"
+	max_depth="$2"
+	if [ "$file" = / ]; then
+		echo /
+	else
+		[ "$max_depth" -gt 0 ]
+		dirname="$(realpath "$(dirname "$file")" "$(( max_depth - 1 ))" | sed 's|/$||')"
+		basename="$(basename "$file")"
+		file="$dirname/$basename"
+		if [ -L "$root$file" ]; then
+			target="$(readlink "$root$file")"
+			if [[ "$target" = /* ]]; then
+				realpath "$target" "$(( max_depth - 1 ))"
+			else
+				realpath "$dirname/$target" "$(( max_depth - 1 ))"
+			fi
+		else
+			echo "$file"
+		fi
+	fi
+)
+
+root=/
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-r|--root)
+			root="$2"
+			shift 2
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+[[ "$1" = /* ]]
+realpath "$1" 64

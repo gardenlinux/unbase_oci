@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+oci="$1"
+target="$2"
+
+if [ "$(jq -r '.manifests | length' < "$oci/index.json")" != 1 ]; then
+	echo "error: oci index with multiple manifests not supported" >&2
+	exit 1
+fi
+
+digest="$(jq -r '.manifests[0].digest' < "$oci/index.json")"
+
+oci-image-tool unpack --ref "digest=$digest" "$oci" "$target"

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+function dpkg_list {
+	dpkg-query --root "$1" --show --showformat '${Package}\n' | sort -u
+}
+
+comm -13 <(dpkg_list "$1") <(dpkg_list "$2")

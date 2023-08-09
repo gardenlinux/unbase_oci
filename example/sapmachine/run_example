@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+
+arch="$(podman system info --format json | jq -r '.host.arch')"
+container_image="$(../../unbase_oci --print-container-image)"
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--arch)
+			arch="$2"
+			shift 2
+			;;
+		--container-image)
+			container_image="$2"
+			shift 2
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+podman pull --arch "$arch" debian
+podman save --format oci-archive debian > debian.oci
+
+podman build --arch "$arch" --tag sapmachine .
+podman save --format oci-archive sapmachine > sapmachine.oci
+
+../../unbase_oci --container-image "$container_image" --exclude exclude --ldd-dependencies --print-tree debian.oci sapmachine.oci sapmachine_distroless.oci
+image="$(podman load < sapmachine_distroless.oci | awk '{ print $NF }')"
+podman tag "$image" sapmachine:distroless
+podman run --rm sapmachine:distroless /opt/sapmachine-jre-20.0.2/bin/java --version
+
+if [ ! -e hello.jar ]; then
+	native_arch="$(podman system info --format json | jq -r '.host.arch')"
+	podman pull --arch "$native_arch" debian
+	podman build --arch "$native_arch" --tag java --file java.Containerfile .
+	podman run --rm -v "$PWD:/mnt" java bash -c 'cd /mnt && javac HelloWorld.java && jar -c -e HelloWorld -f hello.jar HelloWorld.class'
+fi
+
+podman run --rm -v "$PWD/hello.jar:/hello.jar" sapmachine:distroless /opt/sapmachine-jre-20.0.2/bin/java -jar /hello.jar
+
+podman image list --sort size localhost/sapmachine

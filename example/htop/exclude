@@ -1,0 +1,4 @@
+usr/share/(applications|doc|icons|man|pixmaps)
+var/cache
+var/lib/apt
+var/log

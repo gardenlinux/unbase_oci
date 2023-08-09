@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+container_image=localhost/unbase_oci
+container_engine=podman
+
+container_mount_opts=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--container-image)
+			container_image="$2"
+			shift 2
+			;;
+		--container-engine)
+			container_engine="$2"
+			shift 2
+			;;
+		--print-container-image)
+			printf '%s\n' "$container_image"
+			exit 0
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+args=()
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-i|--include|-x|--exclude|--dpkg-include)
+			container_mount_opts+=(-v "$(realpath "$2"):/mnt$(realpath "$2")")
+			args+=("$1" "/mnt$(realpath "$2")")
+			shift 2
+			;;
+		--no-default-include|--no-default-exclude|-d|--dpkg-dependencies|-l|--ldd-dependencies|--print-tree)
+			args+=("$1")
+			shift
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+for file in base target output; do
+	if [ "$file" = output ]; then touch "$1"; fi
+	container_mount_opts+=(-v "$(realpath "$1"):/mnt$(realpath "$1")")
+	args+=("/mnt$(realpath "$1")")
+	shift
+done
+
+"$container_engine" run --rm --read-only --tmpfs /tmp:rw,exec "${container_mount_opts[@]}" "$container_image" "${args[@]}"

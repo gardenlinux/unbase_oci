@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+function cmp_files (
+	{ [ -L "$1" ] || [ -e "$1" ]; } && { [ -L "$1" ] || [ -e "$2" ]; } && \
+	[ "$(stat -c '%A %u %g' "$1")" = "$(stat -c '%A %u %g' "$2")" ] && \
+	{
+		if [ -L "$1" ]; then
+			[ "$(readlink "$1")" = "$(readlink "$2")" ]
+		elif [ -f "$1" ]; then
+			cmp -s "$1" "$2"
+		fi
+	}
+)
+
+base="$1"
+target="$2"
+
+find "$target" -mindepth 1 -printf '%P\n' | while read file; do
+	cmp_files "$base/$file" "$target/$file" || echo "$file"
+done

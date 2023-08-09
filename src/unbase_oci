@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+args=()
+tree=0
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-i|--include|-x|--exclude|--dpkg-include)
+			args+=("$1" "$2")
+			shift 2
+			;;
+		--no-default-include|--no-default-exclude|-d|--dpkg-dependencies|-l|--ldd-dependencies)
+			args+=("$1")
+			shift
+			;;
+		--print-tree)
+			tree=1
+			shift
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+base="$1"
+target="$2"
+output="$3"
+
+echo -n "extracting base rootfs... "
+start_time="$(date '+%s')"
+
+base_dir="$(mktemp -d)"
+tar -C "$base_dir" -x < "$base"
+base_rootfs="$(mktemp -d)"
+./extract_oci "$base_dir" "$base_rootfs"
+rm -rf "$base_dir"
+
+end_time="$(date '+%s')"
+time_diff="$(( end_time - start_time ))"
+echo "[done (${time_diff}s)]"
+size="$(du -sb "$base_rootfs" | cut -f 1)"
+size_human="$(numfmt --to=iec-i --suffix=B "$size")"
+echo "base rootfs size $size_human"
+
+echo -n "extracting target rootfs... "
+start_time="$(date '+%s')"
+
+target_dir="$(mktemp -d)"
+tar -C "$target_dir" -x < "$target"
+
+target_config_json="$(./oci_get_config "$target_dir")"
+target_arch="$(jq -r '.architecture' < "$target_config_json")"
+target_os="$(jq -r '.os' < "$target_config_json")"
+target_config="$(mktemp)"
+jq '.config' < "$target_config_json" > "$target_config"
+
+target_rootfs="$(mktemp -d)"
+./extract_oci "$target_dir" "$target_rootfs"
+rm -rf "$target_dir"
+
+end_time="$(date '+%s')"
+time_diff="$(( end_time - start_time ))"
+echo "[done (${time_diff}s)]"
+size="$(du -sb "$target_rootfs" | cut -f 1)"
+size_human="$(numfmt --to=iec-i --suffix=B "$size")"
+echo "target rootfs size $size_human"
+
+./unbase_rootfs "${args[@]}" "$base_rootfs" "$target_rootfs"
+size="$(du -sb "$target_rootfs" | cut -f 1)"
+size_human="$(numfmt --to=iec-i --suffix=B "$size")"
+echo "output rootfs size $size_human"
+
+[ "$tree" = 0 ] || tree "$target_rootfs"
+
+output_rootfs_tar="$(mktemp)"
+tar --create --format posix --sort name --numeric-owner --pax-option 'exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime' --transform 's|^\./||' --directory "$target_rootfs" . > "$output_rootfs_tar"
+
+rm -rf "$base_rootfs"
+rm -rf "$target_rootfs"
+
+./make_oci --arch "$target_arch" --os "$target_os" --config "$target_config" "$output_rootfs_tar" "$output"
+rm "$output_rootfs_tar"

@@ -1,0 +1,3 @@
+etc/terminfo/.*
+usr/lib/terminfo/.*
+usr/share/terminfo/.*

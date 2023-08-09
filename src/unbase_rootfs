@@ -1,0 +1,223 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+default_include=include
+include=/dev/null
+default_exclude=exclude
+exclude=/dev/null
+dpkg_dependencies=0
+dpkg_include=/dev/null
+ldd_dependencies=0
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-i|--include)
+			include="$2"
+			shift 2
+			;;
+		--no-default-include)
+			default_include=/dev/null
+			shift
+			;;
+		-x|--exclude)
+			exclude="$2"
+			shift 2
+			;;
+		--no-default-exclude)
+			default_exclude=/dev/null
+			shift
+			;;
+		-d|--dpkg-dependencies)
+			dpkg_dependencies=1
+			shift
+			;;
+		--dpkg-include)
+			dpkg_include="$2"
+			shift 2
+			;;
+		-l|--ldd-dependencies)
+			ldd_dependencies=1
+			shift
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+function set_add {
+	echo "$1" | sort -u -m -o "$2" "$2" -
+}
+
+function set_merge {
+	sort -u -m -o "$1" "$1" -
+}
+
+function set_check {
+	look "$1" "$2" | grep -xF "$1" > /dev/null
+}
+
+function list_parents {
+	local dirname="$(dirname "$1")"
+	if [ "$dirname" != . ] && [ "$dirname" != / ]; then
+		echo "$dirname"
+		list_parents "$dirname"
+	fi
+}
+
+base="$1"
+target="$2"
+
+keep_files="$(mktemp)"
+find "$target" -mindepth 1 -printf '%P\n' | { grep -x -E -f "$default_include" -f "$include" || [ $? = 1 ] && cat > /dev/null; } | while read file; do
+	echo "$file"
+	./realpath --root "$target" "/$file" | sed 's|^/||'
+done | sort -u > "$keep_files"
+echo "found $(wc -l < "$keep_files") explicitly included files"
+
+modified_files="$(mktemp)"
+echo -n "finding modified files... "
+start_time="$(date '+%s')"
+./diff_files "$base" "$target" | sort -u > "$modified_files"
+end_time="$(date '+%s')"
+time_diff="$(( end_time - start_time ))"
+echo "[done (${time_diff}s)]"
+echo "found $(wc -l < "$modified_files") modified files"
+
+set_merge "$keep_files" < "$modified_files"
+rm "$modified_files"
+
+if [ "$dpkg_dependencies" = 1 ]; then
+	dpkg_required_files="$(mktemp)"
+	echo -n "finding dpkg dependencies... "
+	start_time="$(date '+%s')"
+	{ cat "$dpkg_include"; ./diff_dpkg "$base" "$target"; } | while read pkg; do
+		./dpkg_depends --root "$target" "$pkg" | while read pkg; do
+			{ dpkg-query --root "$target" --listfiles "$pkg" 2> /dev/null || true; } | sed 's|^/||' | sed '/^.$/d' | while read file; do
+				echo "$file"
+				./realpath --root "$target" "/$file" | sed 's|^/||'
+			done | sort -u | set_merge "$dpkg_required_files"
+		done
+	done
+	end_time="$(date '+%s')"
+	time_diff="$(( end_time - start_time ))"
+	echo "[done (${time_diff}s)]"
+	echo "found $(wc -l < "$dpkg_required_files") files required by dpkg dependencies"
+
+	set_merge "$keep_files" < "$dpkg_required_files"
+	rm "$dpkg_required_files"
+fi
+
+function is_elf {
+	[ "$(od -A n -t x1 -N 4 "$1" | tr -d ' ')" = "7f454c46" ]
+}
+
+function elf_arch {
+	case "$(od -A n -t d1 -j 5 -N 1 "$1" | tr -d ' ')" in
+		1)
+			local endian=little
+			;;
+		2)
+			local endian=big
+			;;
+		*)
+			return 1
+			;;
+	esac
+	case "$(od --endian "$endian" -A n -t x2 -j 18 -N 2 "$1" | tr -d ' ')" in
+		0003)
+			local arch=i686
+			;;
+		003e)
+			local arch=x86_64
+			;;
+		00b7)
+			local arch=aarch64
+			;;
+		*)
+			return 1
+			;;
+	esac
+	echo "$arch"
+}
+
+if [ "$ldd_dependencies" = 1 ]; then
+	ldd_required_files="$(mktemp)"
+	echo -n "finding dynamic library dependencies... "
+	start_time="$(date '+%s')"
+	cat "$keep_files" | while read file; do
+		if [ ! -L "$target/$file" ] && [ -f "$target/$file" ]; then
+			if is_elf "$target/$file"; then
+				interpreter=
+				if ! interpreter="$(patchelf --print-interpreter "$target/$file" 2> /dev/null)"; then
+					case "$(elf_arch "$target/$file")" in
+						i686)
+							interpreter=/lib/ld-linux.so.2
+							;;
+						x86_64)
+							interpreter=/lib64/ld-linux-x86-64.so.2
+							;;
+						aarch64)
+							interpreter=/lib/ld-linux-aarch64.so.1
+							;;
+					esac
+				fi
+				if [ -n "$interpreter" ]; then
+					# segfaults for go binaries if running under qemu-user-static emulation => always return true
+					{ env -i /sbin/chroot "$target" "$interpreter" --inhibit-cache --list "/$file" 2> /dev/null || true; } | sed 's/^.*=>//;s/^\s*//;s/\s*(\w*)$//' | { grep '^/' || [ $? = 1 ]; } | sed 's|^/||'
+				fi
+			fi
+		fi
+	done | while read file; do
+		echo "$file"
+		./realpath --root "$target" "/$file" | sed 's|^/||'
+	done | sort -u > "$ldd_required_files"
+	end_time="$(date '+%s')"
+	time_diff="$(( end_time - start_time ))"
+	echo "[done (${time_diff}s)]"
+	echo "found $(wc -l < "$ldd_required_files") files required by dynamic library dependencies"
+
+	set_merge "$keep_files" < "$ldd_required_files"
+	rm "$ldd_required_files"
+fi
+
+keep_files_excluded="$(mktemp)"
+grep -v -x -E -f <(sed 's|$|(/.*)?|' "$default_exclude") -f <(sed 's|$|(/.*)?|' "$exclude") < "$keep_files" > "$keep_files_excluded" || [ $? = 1 ]
+rm "$keep_files"
+keep_files="$keep_files_excluded"
+
+required_directories="$(mktemp)"
+cat "$keep_files" | while read file; do
+	list_parents "$file"
+done | sort -u > "$required_directories"
+
+set_merge "$keep_files" < "$required_directories"
+rm "$required_directories"
+
+echo -n "removing base from target rootfs... "
+start_time="$(date '+%s')"
+size_before="$(du -sb "$target" | cut -f 1)"
+find "$target" -depth -mindepth 1 -printf '%P\n' | while read file; do
+	if ! set_check "$file" "$keep_files"; then
+		if [ -L "$target/$file" ]; then
+			link_target="$(./realpath --root "$target" "/$file" | sed 's|^/||')"
+			set_check "$link_target" "$keep_files" || rm "$target/$file"
+		elif [ -d "$target/$file" ]; then
+			[ -n "$(ls -A "$target/$file")" ] || rmdir "$target/$file"
+		else
+			rm "$target/$file"
+		fi
+	fi
+done
+end_time="$(date '+%s')"
+time_diff="$(( end_time - start_time ))"
+echo "[done (${time_diff}s)]"
+
+size_after="$(du -sb "$target" | cut -f 1)"
+size_diff="$(( size_before - size_after ))"
+size_diff_human="$(numfmt --to=iec-i --suffix=B "$size_diff")"
+size_diff_percent="$(( 100 * size_diff / size_before ))%"
+echo "reduced rootfs by $size_diff_human ($size_diff_percent)"
+
+rm "$keep_files"

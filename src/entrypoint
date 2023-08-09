@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+./unbase_oci "$@"

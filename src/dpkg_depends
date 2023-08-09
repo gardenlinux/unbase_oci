@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+root=/
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-r|--root)
+			root="$2"
+			shift 2
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+function set_add {
+	echo "$1" | sort -u -m -o "$2" "$2" -
+}
+
+function set_check {
+	look "$1" "$2" | grep "^$1$" > /dev/null
+}
+
+function parse_dpkg_depends {
+	sed 's/[,|] */\n/g' | sed 's/ *(.*)$//' | sed '/^$/d'
+}
+
+function dpkg_depends {
+	pkg="$1"
+	set="$2"
+	set_add "$pkg" "$set"
+	dpkg-query --root "$root" --show --showformat '${Pre-Depends}\n${Depends}\n' "$pkg" | parse_dpkg_depends | while read pkg; do
+		set_check "$pkg" "$set" || dpkg_depends "$pkg" "$set"
+	done
+}
+
+set="$(mktemp)"
+dpkg_depends "$1" "$set"
+cat "$set"
+rm "$set"
