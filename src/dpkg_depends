@@ -25,7 +25,7 @@ function set_check {
 }
 
 function parse_dpkg_depends {
-	sed 's/[,|] */\n/g' | sed 's/ *(.*)$//' | sed '/^$/d'
+	sed 's/ *[,|] */\n/g' | sed 's/ *(.*)$//' | sed '/^$/d'
 }
 
 function dpkg_depends {
