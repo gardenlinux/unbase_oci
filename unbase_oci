@@ -46,11 +46,10 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-for file in base target output; do
-	if [ "$file" = output ]; then touch "$1"; fi
-	container_mount_opts+=(-v "$(realpath "$1"):/mnt$(realpath "$1")")
-	args+=("/mnt$(realpath "$1")")
-	shift
-done
+container_mount_opts+=(-v "$(realpath "$1"):/mnt$(realpath "$1")")
+[ "$1" = "$2" ] || container_mount_opts+=(-v "$(realpath "$2"):/mnt$(realpath "$2")")
+[ -e "$3" ] || touch "$3"
+container_mount_opts+=(-v "$(realpath "$3"):/mnt$(realpath "$3")")
+args+=("/mnt$(realpath "$1")" "/mnt$(realpath "$2")" "/mnt$(realpath "$3")")
 
 "$container_engine" run --rm --read-only --tmpfs /tmp:rw,exec "${container_mount_opts[@]}" "$container_image" "${args[@]}"
