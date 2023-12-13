@@ -72,7 +72,7 @@ To gauge the impact of the container slimming process, refer to `podman image li
 
 ```
 REPOSITORY      TAG         IMAGE ID      SIZE
-localhost/htop  bare  1fa393aa45c2  45.4 MB
+localhost/htop  bare        1fa393aa45c2  45.4 MB
 localhost/htop  latest      5c62748f7b15  165 MB
 ```
 
@@ -120,7 +120,7 @@ A review of `podman image list htop` shows an even more substantial image size r
 
 ```
 REPOSITORY      TAG         IMAGE ID      SIZE
-localhost/htop  bare  9efb3ca1d364  23.2 MB
+localhost/htop  bare        9efb3ca1d364  23.2 MB
 localhost/htop  latest      5c62748f7b15  165 MB
 ```
 
