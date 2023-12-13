@@ -29,14 +29,14 @@ podman save --format oci-archive debian > debian.oci
 podman build --arch "$arch" --tag htop .
 podman save --format oci-archive htop > htop.oci
 
-../../unbase_oci --container-image "$container_image" --exclude exclude --dpkg-dependencies --dpkg-include dpkg_include --print-tree debian.oci htop.oci htop_distroless_dpkg.oci
-image="$(podman load < htop_distroless_dpkg.oci | awk '{ print $NF }')"
-podman tag "$image" htop:distroless_dpkg
-podman run --rm htop:distroless_dpkg htop --version
+../../unbase_oci --container-image "$container_image" --exclude exclude --dpkg-dependencies --dpkg-include dpkg_include --print-tree debian.oci htop.oci htop_bare_dpkg.oci
+image="$(podman load < htop_bare_dpkg.oci | awk '{ print $NF }')"
+podman tag "$image" htop:bare_dpkg
+podman run --rm htop:bare_dpkg htop --version
 
-../../unbase_oci --container-image "$container_image" --include include --exclude exclude --ldd-dependencies --print-tree debian.oci htop.oci htop_distroless.oci
-image="$(podman load < htop_distroless.oci | awk '{ print $NF }')"
-podman tag "$image" htop:distroless
-podman run --rm htop:distroless htop --version
+../../unbase_oci --container-image "$container_image" --include include --exclude exclude --ldd-dependencies --print-tree debian.oci htop.oci htop_bare.oci
+image="$(podman load < htop_bare.oci | awk '{ print $NF }')"
+podman tag "$image" htop:bare
+podman run --rm htop:bare htop --version
 
 podman image list --sort size localhost/htop

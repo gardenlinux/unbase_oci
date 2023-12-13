@@ -1,6 +1,6 @@
 # unbase_oci: Guided Example (htop)
 
-This guide demonstrates the utilization of the `unbase_oci` tool to construct a *"distroless"* container image for the `htop` utility program.
+This guide demonstrates the utilization of the `unbase_oci` tool to construct a *bare* container image for the `htop` utility program.
 
 Creating a container image to run htop is a straightforward process, achieved with the following `Containerfile`:
 
@@ -28,16 +28,16 @@ podman save --format oci-archive htop > htop.oci
 Subsequently, we can initiate the `unbase_oci` tool:
 
 ```shell
-./unbase_oci --dpkg-dependencies debian.oci htop.oci htop_distroless.oci
+./unbase_oci --dpkg-dependencies debian.oci htop.oci htop_bare.oci
 ```
 
-This operation generates a fresh oci archive, named htop_distroless.oci, encompassing only the requisite components from htop.oci. The debian base layer is minimized as much as possible. To validate the container image, load it into podman:
+This operation generates a fresh oci archive, named htop_bare.oci, encompassing only the requisite components from htop.oci. The debian base layer is minimized as much as possible. To validate the container image, load it into podman:
 
 ```shell
-podman load < htop_distroless.oci
+podman load < htop_bare.oci
 ```
 
-This step provides the sha256 hash sum of the imported image, enabling its tagging with `podman tag IMAGE_HASH htop:distroless`. However, executing the image using `podman run --rm -it --pid host htop:distroless` results in an error:
+This step provides the sha256 hash sum of the imported image, enabling its tagging with `podman tag IMAGE_HASH htop:bare`. However, executing the image using `podman run --rm -it --pid host htop:bare` results in an error:
 
 ```
 Error opening terminal: xterm.
@@ -54,25 +54,25 @@ ncurses-base
 Subsequently, re-run `unbase_oci`, this time incorporating the `--dpkg-include` flag:
 
 ```shell
-./unbase_oci --dpkg-dependencies --dpkg-include dpkg_include debian.oci htop.oci htop_distroless.oci
+./unbase_oci --dpkg-dependencies --dpkg-include dpkg_include debian.oci htop.oci htop_bare.oci
 ```
 
 Now, proceed to reload and tag the image:
 
 ```shell
-podman load < htop_distroless.oci
-podman tag IMAGE_HASH htop:distroless
+podman load < htop_bare.oci
+podman tag IMAGE_HASH htop:bare
 ```
 
 (Ensure the new hash output from `podman load` is employed, replacing the previous one.)
 
-Upon executing `podman run --rm -it --pid host htop:distroless`, `htop` functions seamlessly.
+Upon executing `podman run --rm -it --pid host htop:bare`, `htop` functions seamlessly.
 
 To gauge the impact of the container slimming process, refer to `podman image list htop`. The output will resemble the following:
 
 ```
 REPOSITORY      TAG         IMAGE ID      SIZE
-localhost/htop  distroless  1fa393aa45c2  45.4 MB
+localhost/htop  bare  1fa393aa45c2  45.4 MB
 localhost/htop  latest      5c62748f7b15  165 MB
 ```
 
@@ -104,14 +104,14 @@ The file specifies regex patterns; paths matching any of these patterns will be 
 Proceed with the following command:
 
 ```shell
-./unbase_oci --include include --ldd-dependencies debian.oci htop.oci htop_distroless.oci
+./unbase_oci --include include --ldd-dependencies debian.oci htop.oci htop_bare.oci
 ```
 
 Once more, load and tag the image:
 
 ```shell
-podman load < htop_distroless.oci
-podman tag IMAGE_HASH htop:distroless
+podman load < htop_bare.oci
+podman tag IMAGE_HASH htop:bare
 ```
 
 This action similarly yields a functional htop container image.
@@ -120,7 +120,7 @@ A review of `podman image list htop` shows an even more substantial image size r
 
 ```
 REPOSITORY      TAG         IMAGE ID      SIZE
-localhost/htop  distroless  9efb3ca1d364  23.2 MB
+localhost/htop  bare  9efb3ca1d364  23.2 MB
 localhost/htop  latest      5c62748f7b15  165 MB
 ```
 
@@ -140,7 +140,7 @@ var/log
 Subsequently, execute `unbase_oci` once more:
 
 ```shell
-./unbase_oci --include include --exclude exclude --ldd-dependencies debian.oci htop.oci htop_distroless.oci
+./unbase_oci --include include --exclude exclude --ldd-dependencies debian.oci htop.oci htop_bare.oci
 ```
 
 This ultimate optimization step culminates in an impressive image size reduction of 97%.
