@@ -1,7 +1,7 @@
 # unbase_oci: Streamline OCI Container Images
 
 The **unbase OCI tool** is designed to streamline container images by eliminating unnecessary components inherited from the base container, thereby reducing bloat and enhancing security.
-It essentially produces a so called *"distroless"* container image.
+It produces [bare container images](https://github.com/gardenlinux/gardenlinux/blob/main/docs/01_developers/bare_container.md).
 Operating on OCI archives, the tool performs a thorough comparison between a base image and a target image.
 It identifies additions made to the target image in relation to the base image, as well as the dependencies of these additions.
 The tool then strips away extraneous elements, resulting in a minimized target image.
@@ -57,10 +57,10 @@ Options:
 
 ## Example Usage
 
-For instance, consider building a container on top of a Debian base. Let's assume `debian.oci` represents an exported OCI archive of the Debian base image, while `container.oci` is an exported OCI archive of the target image. To create a *"distroless"* variant of the target container, containing only the dependencies of explicitly installed components on top of Debian (e.g.: libc), execute:
+For instance, consider building a container on top of a Debian base. Let's assume `debian.oci` represents an exported OCI archive of the Debian base image, while `container.oci` is an exported OCI archive of the target image. To create a *bare* variant of the target container, containing only the dependencies of explicitly installed components on top of Debian (e.g.: libc), execute:
 
 ```shell
-./unbase_oci --ldd-dependencies debian.oci container.oci container_distroless.oci
+./unbase_oci --ldd-dependencies debian.oci container.oci container_bare.oci
 ```
 
 For a more comprehensive example, please refer to the detailed guide in [example/htop](example/htop/README.md). This will further illustrate the tool's functionality in practice.

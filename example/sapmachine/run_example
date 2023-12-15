@@ -29,10 +29,10 @@ podman save --format oci-archive debian > debian.oci
 podman build --arch "$arch" --tag sapmachine .
 podman save --format oci-archive sapmachine > sapmachine.oci
 
-../../unbase_oci --container-image "$container_image" --exclude exclude --ldd-dependencies --print-tree debian.oci sapmachine.oci sapmachine_distroless.oci
-image="$(podman load < sapmachine_distroless.oci | awk '{ print $NF }')"
-podman tag "$image" sapmachine:distroless
-podman run --rm sapmachine:distroless /opt/sapmachine-jre-20.0.2/bin/java --version
+../../unbase_oci --container-image "$container_image" --exclude exclude --ldd-dependencies --print-tree debian.oci sapmachine.oci sapmachine_bare.oci
+image="$(podman load < sapmachine_bare.oci | awk '{ print $NF }')"
+podman tag "$image" sapmachine:bare
+podman run --rm sapmachine:bare /opt/sapmachine-jre-20.0.2/bin/java --version
 
 if [ ! -e hello.jar ]; then
 	native_arch="$(podman system info --format json | jq -r '.host.arch')"
@@ -41,6 +41,6 @@ if [ ! -e hello.jar ]; then
 	podman run --rm -v "$PWD:/mnt" java bash -c 'cd /mnt && javac HelloWorld.java && jar -c -e HelloWorld -f hello.jar HelloWorld.class'
 fi
 
-podman run --rm -v "$PWD/hello.jar:/hello.jar" sapmachine:distroless /opt/sapmachine-jre-20.0.2/bin/java -jar /hello.jar
+podman run --rm -v "$PWD/hello.jar:/hello.jar" sapmachine:bare /opt/sapmachine-jre-20.0.2/bin/java -jar /hello.jar
 
 podman image list --sort size localhost/sapmachine
