@@ -7,7 +7,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: gardenlinux/workflow-telemetry-action@6f19ac2411a52a120abb74c812592b44f165d05c # pin@v1
+      - uses: gardenlinux/workflow-telemetry-action@9742ad16c70308bc8fa5f850d6ee6b22f2cce076 # pin@v2
         with:
           metric_frequency: 1
           comment_on_pr: false
