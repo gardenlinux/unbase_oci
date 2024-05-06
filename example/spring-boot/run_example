@@ -23,11 +23,11 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-pushd spring_app
-
-./gradlew bootJar
-
-popd
+if [ ! -e spring_app/build/libs/unbase_oci_demo-0.0.1-SNAPSHOT.jar ]; then
+	native_arch="$(podman system info --format json | jq -r '.host.arch')"
+	podman pull --arch "$native_arch" sapmachine:21-jdk-ubuntu
+	podman run --rm -v "$PWD:/mnt" sapmachine:21-jdk-ubuntu bash -c 'cd /mnt/spring_app && ./gradlew bootJar'
+fi
 
 podman build --arch "$arch" --tag spring-demo:latest .
 
