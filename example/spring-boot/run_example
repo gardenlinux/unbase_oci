@@ -37,7 +37,7 @@ podman save --format oci-archive spring-demo:latest > spring-demo.oci
 podman pull --arch "$arch" ubuntu:22.04
 podman save --format oci-archive ubuntu:22.04 > ubuntu.oci
 
-../../unbase_oci --container-image "$container_image" --exclude exclude --include include --ldd-dependencies --print-tree ubuntu.oci spring-demo.oci spring-demo_bare.oci
+../../unbase_oci --container-image "$container_image" --exclude exclude --ldd-dependencies --print-tree ubuntu.oci spring-demo.oci spring-demo_bare.oci
 
 image="$(podman load < spring-demo_bare.oci | awk '{ print $NF }')"
 podman tag "$image" spring-demo:latest_bare
