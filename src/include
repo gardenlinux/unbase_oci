@@ -1,5 +1,7 @@
 bin
 dev
 proc
+run
 sbin
 sys
+tmp
