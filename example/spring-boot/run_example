@@ -41,3 +41,9 @@ podman save --format oci-archive ubuntu:22.04 > ubuntu.oci
 
 image="$(podman load < spring-demo_bare.oci | awk '{ print $NF }')"
 podman tag "$image" spring-demo:latest_bare
+
+podman image list --sort size localhost/spring-demo
+
+timeout 10 podman run -d -p 8080:8080 spring-demo:latest_bare
+sleep 5
+curl 'http://localhost:8080/' -i -X GET
