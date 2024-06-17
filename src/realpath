@@ -11,7 +11,13 @@ realpath() (
 		[ "$max_depth" -gt 0 ]
 		dirname="$(realpath "$(dirname "$file")" "$(( max_depth - 1 ))" | sed 's|/$||')"
 		basename="$(basename "$file")"
-		file="$dirname/$basename"
+		if [ "$basename" = . ]; then
+			file="$dirname"
+		elif [ "$basename" = .. ]; then
+			file="$(dirname "$dirname")"
+		else
+			file="$dirname/$basename"
+		fi
 		if [ -L "$root$file" ]; then
 			target="$(readlink "$root$file")"
 			if [[ "$target" = /* ]]; then
