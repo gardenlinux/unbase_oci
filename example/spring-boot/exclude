@@ -1,0 +1,4 @@
+var/cache
+var/lib/apt
+var/log
+
