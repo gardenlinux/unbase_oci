@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+set -eufo pipefail
+
+[ "${1:-}" = --keep-ns ] || exec unshare --map-root-user --mount "$0" --keep-ns "$@"
+shift
+
+mount --rbind --make-rprivate /proc "$1/proc"
+env -i /sbin/chroot "$@"
+umount -l "$1/proc"
