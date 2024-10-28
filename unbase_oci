@@ -46,10 +46,15 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+if [ "$container_image" = localhost/unbase_oci ]; then
+	dir="$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")"
+	"$container_engine" build -t "$container_image" "$dir"
+fi
+
 container_mount_opts+=(-v "$(realpath "$1"):/mnt$(realpath "$1")")
 [ "$1" = "$2" ] || container_mount_opts+=(-v "$(realpath "$2"):/mnt$(realpath "$2")")
 [ -e "$3" ] || touch "$3"
 container_mount_opts+=(-v "$(realpath "$3"):/mnt$(realpath "$3")")
 args+=("/mnt$(realpath "$1")" "/mnt$(realpath "$2")" "/mnt$(realpath "$3")")
 
-"$container_engine" run --rm --read-only --tmpfs /tmp:rw,exec "${container_mount_opts[@]}" "$container_image" "${args[@]}"
+"$container_engine" run --rm --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt label=disable --read-only --tmpfs /tmp:rw,exec "${container_mount_opts[@]}" "$container_image" "${args[@]}"

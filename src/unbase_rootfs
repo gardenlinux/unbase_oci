@@ -165,7 +165,7 @@ if [ "$ldd_dependencies" = 1 ]; then
 				fi
 				if [ -n "$interpreter" ]; then
 					# segfaults for go binaries if running under qemu-user-static emulation => always return true
-					{ env -i /sbin/chroot "$target" "$interpreter" --inhibit-cache --list "/$file" 2> /dev/null || true; } | sed 's/^.*=>//;s/^\s*//;s/\s*(\w*)$//' | { grep '^/' || [ $? = 1 ]; } | sed 's|^/||'
+					{ ./chroot "$target" "$interpreter" --inhibit-cache --list "/$file" 2> /dev/null || true; } | sed 's/^.*=>//;s/^\s*//;s/\s*(\w*)$//' | { grep '^/' || [ $? = 1 ]; } | sed 's|^/||'
 				fi
 			fi
 		fi
