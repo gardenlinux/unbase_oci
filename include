@@ -19,6 +19,7 @@ usr/bin/look
 usr/bin/ls
 usr/bin/mkdir
 usr/bin/mktemp
+usr/bin/mount
 usr/bin/mv
 usr/bin/numfmt
 usr/bin/oci-image-tool
@@ -36,5 +37,6 @@ usr/bin/tar
 usr/bin/touch
 usr/bin/tr
 usr/bin/tree
+usr/bin/unshare
 usr/bin/wc
 usr/sbin/chroot
