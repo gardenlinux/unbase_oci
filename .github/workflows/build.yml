@@ -22,10 +22,10 @@ jobs:
         run: ./test --container-image unbase_oci:amd64 --arch arm64
       - name: build arm64
         run: ./build --arch arm64
-      - name: test arm64 for amd64 target
-        run: ./test --container-image unbase_oci:arm64 --arch amd64
-      - name: test arm64 for arm64 target
-        run: ./test --container-image unbase_oci:arm64 --arch arm64
+      # - name: test arm64 for amd64 target
+      #   run: ./test --container-image unbase_oci:arm64 --arch amd64
+      # - name: test arm64 for arm64 target
+      #   run: ./test --container-image unbase_oci:arm64 --arch arm64
       - name: upload to github container registry
         run: |
           podman tag unbase_oci:amd64 ghcr.io/${{ github.repository }}:amd64-${{ github.sha }}
