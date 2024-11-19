@@ -46,10 +46,41 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-container_mount_opts+=(-v "$(realpath "$1"):/mnt$(realpath "$1")")
-[ "$1" = "$2" ] || container_mount_opts+=(-v "$(realpath "$2"):/mnt$(realpath "$2")")
-[ -e "$3" ] || touch "$3"
-container_mount_opts+=(-v "$(realpath "$3"):/mnt$(realpath "$3")")
-args+=("/mnt$(realpath "$1")" "/mnt$(realpath "$2")" "/mnt$(realpath "$3")")
+tmp_files=()
+
+for key in base input output; do
+	value="$1"
+	shift
+	declare "${key}"="$value"
+	if [[ "$value" =~ ^([a-z]+):(.*)$ ]]; then
+		declare "${key}_container_engine"="${BASH_REMATCH[1]}"
+		declare "${key}_container_image"="${BASH_REMATCH[2]}"
+		tmp_file="$(mktemp)"
+		tmp_files+=("$tmp_file")
+		declare "${key}_file"="$tmp_file"
+	else
+		declare "${key}_container_engine"=""
+		declare "${key}_container_image"=""
+		declare "${key}_file"="$value"
+	fi
+done
+
+[ -z "$base_container_engine" ] || "$base_container_engine" save --format oci-archive "$base_container_image" > "$base_file"
+[ -z "$input_container_engine" ] || "$input_container_engine" save --format oci-archive "$input_container_image" > "$input_file"
+
+container_mount_opts+=(-v "$(realpath "$base_file"):/mnt$(realpath "$base_file")")
+[ "$base_file" = "$input_file" ] || container_mount_opts+=(-v "$(realpath "$input_file"):/mnt$(realpath "$input_file")")
+[ -e "$output_file" ] || touch "$output_file"
+container_mount_opts+=(-v "$(realpath "$output_file"):/mnt$(realpath "$output_file")")
+args+=("/mnt$(realpath "$base_file")" "/mnt$(realpath "$input_file")" "/mnt$(realpath "$output_file")")
 
 "$container_engine" run --rm --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt label=disable --read-only --tmpfs /tmp:rw,exec "${container_mount_opts[@]}" "$container_image" "${args[@]}"
+
+if [ -n "$output_container_engine" ]; then
+	image_id="$(podman load < "$output_file" | awk '{ print $NF }')"
+	podman tag "$image_id" "$output_container_image"
+fi
+
+for tmp_file in "${tmp_files[@]}"; do
+	rm "$tmp_file"
+done
