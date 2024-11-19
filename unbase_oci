@@ -50,6 +50,7 @@ tmp_files=()
 
 for key in base input output; do
 	if [[ "$1" == :* ]]; then
+		[ -n "$value" ] && [ "$value" != auto ]
 		value="${value%:*}$1"
 	else
 		value="$1"
@@ -68,6 +69,29 @@ for key in base input output; do
 		declare "${key}_file"="$value"
 	fi
 done
+
+if [ "$base" = auto ]; then
+	[ -n "$input_container_engine" ] && [ -n "$input_container_image" ]
+	image="$input_container_image"
+	parent="$("$input_container_engine" image inspect "$image" | jq -r '.[0] | .Parent')"
+	repo_tag="null"
+	while [ "$repo_tag" == null ]; do
+		if [ -z "$parent" ]; then
+			echo "failed to auto determine base image" >&2
+			exit 1
+		fi
+		repo_tag="$("$input_container_engine" image inspect "$parent" | jq -r '.[0] | .RepoTags.[0]')"
+		parent="$("$input_container_engine" image inspect "$parent" | jq -r '.[0] | .Parent')"
+	done
+
+	echo "auto determined base image: $repo_tag"
+
+	base_container_engine="$input_container_engine"
+	base_container_image="$repo_tag"
+	tmp_file="$(mktemp)"
+	tmp_files+=("$tmp_file")
+	base_file="$tmp_file"
+fi
 
 [ -z "$base_container_engine" ] || "$base_container_engine" save --format oci-archive "$base_container_image" > "$base_file"
 [ -z "$input_container_engine" ] || "$input_container_engine" save --format oci-archive "$input_container_image" > "$input_file"
