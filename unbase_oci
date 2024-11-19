@@ -105,8 +105,8 @@ args+=("/mnt$(realpath "$base_file")" "/mnt$(realpath "$input_file")" "/mnt$(rea
 "$container_engine" run --rm --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt label=disable --read-only --tmpfs /tmp:rw,exec "${container_mount_opts[@]}" "$container_image" "${args[@]}"
 
 if [ -n "$output_container_engine" ]; then
-	image_id="$(podman load < "$output_file" | awk '{ print $NF }')"
-	podman tag "$image_id" "$output_container_image"
+	image_id="$("$output_container_engine" load < "$output_file" | awk '{ print $NF }')"
+	"$output_container_engine" tag "$image_id" "$output_container_image"
 fi
 
 for tmp_file in "${tmp_files[@]}"; do
