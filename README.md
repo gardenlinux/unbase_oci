@@ -31,8 +31,9 @@ chmod +x unbase_oci
 
 base_image, target_image, and output_image can either be OCI-archive file names
 or container images of the form "${container_engine}:${image}" where ${container_engine}
-might be `podman` or `docker`.
+is `podman`.
 For this the images must already be pulled in the local image storage of ${container_engine}.
+See the usage example below.
 
 For all but base_image you can use the ":${tag}" shorthand to indicate that the same container engine
 and image name as the previous arg should be used, but with a different tag.
