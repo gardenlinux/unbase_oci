@@ -2,7 +2,7 @@
 
 The **unbase OCI tool** is designed to streamline container images by eliminating unnecessary components inherited from the base container, thereby reducing bloat and enhancing security.
 It produces [bare container images](https://github.com/gardenlinux/gardenlinux/blob/main/docs/01_developers/bare_container.md).
-Operating on OCI archives, the tool performs a thorough comparison between a base image and a target image.
+Operating on OCI archives or container images, the tool performs a thorough comparison between a base image and a target image.
 It identifies additions made to the target image in relation to the base image, as well as the dependencies of these additions.
 The tool then strips away extraneous elements, resulting in a minimized target image.
 
@@ -28,6 +28,17 @@ chmod +x unbase_oci
 
 ```
 ./unbase_oci [options] base_image target_image output_image
+
+base_image, target_image, and output_image can either be OCI-archive file names
+or container images of the form "${container_engine}:${image}".
+For this the images must already be pulled in the local image storage of ${container_engine}.
+
+For all but base_image you can use the ":${tag}" shorthand to indicate that the same container engine
+and image name as the previous arg should be used, but with a different tag.
+
+If target_image is not using the shorthand notation, then base_image can be set to "auto".
+This will automatically resolve the base_image based on meta-data in the target_image.
+Note: this only works for images locally build via a Containerfile/Dockerfile.
 
 Options:
   -i, --include INCLUDE_FILE          Specify regex patterns to selectively include files.
