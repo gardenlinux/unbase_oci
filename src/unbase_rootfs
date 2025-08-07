@@ -86,7 +86,6 @@ echo "[done (${time_diff}s)]"
 echo "found $(wc -l < "$modified_files") modified files"
 
 set_merge "$keep_files" < "$modified_files"
-rm "$modified_files"
 
 if [ "$dpkg_dependencies" = 1 ]; then
 	dpkg_required_files="$(mktemp)"
@@ -198,7 +197,8 @@ rm "$required_directories"
 echo -n "removing base from target rootfs... "
 start_time="$(date '+%s')"
 size_before="$(du -sb "$target" | cut -f 1)"
-find "$target" -depth -mindepth 1 -printf '%P\n' | while read file; do
+size_base_trimmed=0
+while read file; do
 	if ! set_check "$file" "$keep_files"; then
 		if [ -L "$target/$file" ]; then
 			link_target="$(./realpath --root "$target" "/$file" | sed 's|^/||')"
@@ -207,17 +207,22 @@ find "$target" -depth -mindepth 1 -printf '%P\n' | while read file; do
 			[ -n "$(ls -A "$target/$file")" ] || rmdir "$target/$file"
 		else
 			rm "$target/$file"
+			if ! set_check "$file" "$modified_files"; then
+				file_size="$(du -sb "$base/$file" | cut -f 1)"
+				size_base_trimmed=$(( size_base_trimmed + file_size ))
+			fi
 		fi
 	fi
-done
+done < <(find "$target" -depth -mindepth 1 -printf '%P\n')
 end_time="$(date '+%s')"
 time_diff="$(( end_time - start_time ))"
 echo "[done (${time_diff}s)]"
 
+size_base="$(du -sb "$base" | cut -f 1)"
+size_base_trimmed_percent="$(( 100 * size_base_trimmed / size_base ))%"
 size_after="$(du -sb "$target" | cut -f 1)"
 size_diff="$(( size_before - size_after ))"
 size_diff_human="$(numfmt --to=iec-i --suffix=B "$size_diff")"
-size_diff_percent="$(( 100 * size_diff / size_before ))%"
-echo "reduced rootfs by $size_diff_human ($size_diff_percent)"
+echo "removed $size_base_trimmed_percent of base, reduced rootfs by $size_diff_human"
 
-rm "$keep_files"
+rm "$keep_files" "$modified_files"
