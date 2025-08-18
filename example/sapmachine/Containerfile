@@ -1,7 +1,7 @@
 FROM debian AS download
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y ca-certificates curl
-RUN curl -sSL https://github.com/SAP/SapMachine/releases/download/sapmachine-20.0.2/sapmachine-jre-20.0.2_linux-$(uname -m | sed 's/x86_64/x64/')_bin.tar.gz | gzip -d | tar -C /opt/ -x
+RUN curl -sSL https://github.com/SAP/SapMachine/releases/download/sapmachine-21.0.8/sapmachine-jre-21.0.8_linux-$(uname -m | sed 's/x86_64/x64/')_bin.tar.gz | gzip -d | tar -C /opt/ -x
 
 FROM debian
-COPY --from=download /opt/sapmachine-jre-20.0.2 /opt/sapmachine-jre-20.0.2
-ENV PATH="$PATH:/opt/sapmachine-jre-20.0.2/bin"
+COPY --from=download /opt/sapmachine-jre-21.0.8 /opt/sapmachine-jre-21.0.8
+ENV PATH="$PATH:/opt/sapmachine-jre-21.0.8/bin"
