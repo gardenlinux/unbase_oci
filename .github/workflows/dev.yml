@@ -8,7 +8,7 @@ jobs:
         with:
           metric_frequency: 1
           comment_on_pr: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: build
         run: ./build
       - name: test
