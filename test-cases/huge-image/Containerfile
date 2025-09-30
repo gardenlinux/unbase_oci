@@ -1,0 +1,3 @@
+FROM ghcr.io/gardenlinux/gardenlinux:1592.14
+
+COPY foo /foo
