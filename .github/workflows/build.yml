@@ -11,7 +11,7 @@ jobs:
         with:
           metric_frequency: 1
           comment_on_pr: false
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: install required packages for cross build
         run: sudo apt-get update && sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-user-static
       - name: build amd64
