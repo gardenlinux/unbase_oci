@@ -17,22 +17,42 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-podman pull --arch "$native_arch" debian
 podman build --arch "$native_arch" --tag unbase_oci:dev .
 
 if [ "$arch" = "$native_arch" ]; then
 	podman tag unbase_oci:dev "unbase_oci:dev-$arch"
 else
-	podman pull --arch "$arch" debian
 	podman build --arch "$arch" --tag "unbase_oci:dev-$arch" .
 fi
 
-podman save --format oci-archive debian > debian.oci
-podman save --format oci-archive "unbase_oci:dev-$arch" > unbase_oci_dev.oci
-./unbase_oci --container-image unbase_oci:dev --include include --exclude exclude --ldd-dependencies --print-tree debian.oci unbase_oci_dev.oci unbase_oci.oci
+container_dir="$(mktemp -d)"
 
-image="$(podman load < unbase_oci.oci | awk '{ print $NF }')"
-rm debian.oci unbase_oci_dev.oci unbase_oci.oci
+pushd "${container_dir}"
+
+mkdir bound_dir
+
+podman save --format oci-archive "unbase_oci:dev-$arch" > bound_dir/unbase_oci_dev.oci
+
+podman run --rm --privileged --security-opt label=disable -v ./bound_dir:/mnt/bound_dir unbase_oci:dev \
+  strip --base-oci /mnt/bound_dir/unbase_oci_dev.oci --source-oci "" --target-oci /mnt/bound_dir/unbase_oci_dev_stripped.oci \
+  --new-entrypoint "[\"python3\", \"-m\", \"unbase_oci\"]" --new-workdir /opt/unbase_oci \
+  -d /opt/unbase_oci \
+  -d /etc/containers \
+  -d /usr/bin/python3 \
+  -d /usr/local/lib \
+  -d /var/tmp/.keep \
+  -d apt:///podman \
+  -d apt-tree:///python3 \
+  -d apt-tree:///nftables \
+  -d apt:///conmon \
+  -d apt:///crun \
+  -d apt:///netavark \
+  -d apt:///ncurses-base
+
+image="$(podman load < bound_dir/unbase_oci_dev_stripped.oci | awk '{ print $NF }')"
+popd
+
+rm -fR "${container_dir}"
 
 podman tag "$image" "unbase_oci:$arch"
 if [ "$arch" = "$native_arch" ]; then
