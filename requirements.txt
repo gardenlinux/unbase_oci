@@ -1,0 +1,7 @@
+jsonschema>=4.26.0,<5
+dlinfo>=2.0.0,<3
+macholib>=1.16.4,<2
+podman>=5.8.0,<6
+pure-magic-rs>=0.4.2,<0.5
+pyelftools==0.33
+python-debian>=1.1.0,<2
