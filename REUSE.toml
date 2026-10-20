@@ -1,0 +1,10 @@
+version = 1
+SPDX-PackageName = "gardenlinux-sci"
+SPDX-PackageSupplier = "Gardenlinux authors <gardenlinux-admin@lists.neonephos.org>"
+SPDX-PackageDownloadLocation = "https://github.com/gardenlinux/gardenlinux-sci"
+
+[[annotations]]
+path = "**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2020-2026 SAP SE or an SAP affiliated company and Gardenlinux contributors"
+SPDX-License-Identifier = "Apache-2.0"
